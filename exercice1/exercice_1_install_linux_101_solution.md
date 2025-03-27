@@ -43,31 +43,51 @@ sudo nano /etc/loki/config.yaml
 ```
 Copiez cette configuration de base :
 ```yaml
+# Active ou désactive l'authentification pour accéder à Loki.
 auth_enabled: false
 
+# Configuration du serveur HTTP Loki.
 server:
+  # Port d'écoute HTTP du serveur.
   http_listen_port: 3100
 
+# Configuration commune à tous les composants Loki.
 common:
   ring:
+    # Adresse IP de l'instance Loki actuelle.
     instance_addr: 127.0.0.1
+    # Configuration du magasin clé-valeur utilisé pour stocker les états internes.
     kvstore:
+      # Utilisation d'un magasin clé-valeur en mémoire.
       store: inmemory
+  # Facteur de réplication (nombre de copies des données).
   replication_factor: 1
+  # Chemin préfixe pour stocker les données temporaires et persistantes.
   path_prefix: /tmp/loki
 
+# Configuration des schémas utilisés par Loki pour organiser les données.
 schema_config:
   configs:
-  - from: 2020-05-15
-    store: tsdb
-    object_store: filesystem
-    schema: v13
-    index:
-      prefix: index_
-      period: 24h
+    # Définition du schéma à utiliser.
+    - from: 2020-05-15
+      # Utilisation du stockage TSDB (base de données time-series).
+      store: tsdb
+      # Utilisation du stockage objet local sur le système de fichiers.
+      object_store: filesystem
+      # Version du schéma à utiliser.
+      schema: v13
+      # Configuration de l'index utilisé pour rechercher les logs.
+      index:
+        # Préfixe des fichiers d'index.
+        prefix: index_
+        # Période de rotation des fichiers d'index.
+        period: 24h
 
+# Configuration du stockage utilisé pour conserver les logs.
 storage_config:
+  # Stockage sur le système de fichiers local.
   filesystem:
+    # Répertoire où seront stockés les morceaux de logs (chunks).
     directory: /tmp/loki/chunks
 ```
 
@@ -126,18 +146,26 @@ sudo nano /etc/alloy/config.alloy
 ```
 Configuration de base :
 ```
+// Correspondance de fichiers locaux à surveiller
 local.file_match "local_files" {
+    // Chemins des fichiers journaux à surveiller (ici tous les fichiers .log)
     path_targets = [{"__path__" = "/var/log/*.log"}]
+    // Fréquence à laquelle les correspondances sont mises à jour
     sync_period = "5s"
 }
 
+// Source Loki pour lire les journaux locaux
 loki.source.file "log_scrape" {
+  // Cibles définies à partir des correspondances de fichiers locaux
   targets    = local.file_match.local_files.targets
+  // Destination des journaux collectés
   forward_to = [loki.write.grafana_loki.receiver]
-} 
+}
 
+// Écriture des journaux collectés vers une instance Loki
 loki.write "grafana_loki" {
   endpoint {
+    // URL de l'instance Loki vers laquelle envoyer les journaux
     url = "http://localhost:3100/loki/api/v1/push"
   }
 }
