@@ -3,18 +3,53 @@ logging {
   format = "logfmt"
 }
 
-loki.source.file "fleet_logs" {
-  targets    = ["./fleet_logs.log"]
-  forward_to = [loki.write.default.receiver]
-
-  labels = {
-    job = "flotte-interstellaire"
-  }
+local.file_match "local_files" {
+  path_targets = [{"__path__" = "/var/log/*.log"}]
+  sync_period = "5s"
 }
 
-loki.write "default" {
+local.file_match "fleet_logs" {
+  path_targets = [{"__path__" = "/home/user/Téléchargements/fleet_logs.log"}]
+  sync_period = "5s"
+}
+
+loki.source.file "log_scrape" {
+  targets    = local.file_match.local_files.targets
+  forward_to = [loki.write.grafana_loki.receiver]
+}
+
+loki.source.file "fleet_logs" {
+  targets    = local.file_match.fleet_logs.targets
+  forward_to = [loki.process.add_new_labels.receiver]
+}
+
+loki.process "add_new_labels" {
+  
+  stage.logfmt {
+    mapping = {
+      "vaisseau" = "vaisseau",
+      "pilote"  = "pilote",
+      "message" = "message",
+    }
+  }
+
+  stage.labels {
+    values = {
+      "vaisseau" = "vaisseau",
+      "pilote"  = "pilote",
+      "message" = "message",
+    }
+  }
+
+  forward_to = [loki.relabel.log_relabeler.receiver]
+}
+
+loki.relabel "log_relabeler" {
+  forward_to = [loki.write.grafana_loki.receiver]
+}
+
+loki.write "grafana_loki" {
   endpoint {
     url = "http://localhost:3100/loki/api/v1/push"
   }
 }
-

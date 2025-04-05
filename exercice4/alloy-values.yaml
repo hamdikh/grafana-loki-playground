@@ -26,11 +26,35 @@ alloy:
 
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pods.output
-        forward_to = [loki.write.local.receiver]
+        forward_to = [loki.process.add_new_label.receiver]
       }
 
-      loki.write "local" {
+      loki.process "add_new_label" {
+        stage.logfmt {
+          mapping = {
+            "vaisseau" = "vaisseau",
+            "pilote"  = "pilote",
+            "message" = "message",
+          }
+        }
+
+        stage.labels {
+          values = {
+            "vaisseau" = "vaisseau",
+            "pilote"  = "pilote",
+            "message" = "message",
+          }
+        }
+
+        forward_to = [loki.relabel.log_relabel.receiver]
+      }
+
+      loki.relabel "log_relabel" {
+        forward_to = [loki.write.grafana_loki.receiver]
+      }
+
+      loki.write "grafana_loki" {
         endpoint {
-          url       = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+          url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
         }
       }

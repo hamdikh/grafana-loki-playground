@@ -10,16 +10,12 @@ Les composants concernés sont :
 - **Alloy** – agent collecteur de logs, métriques et traces.
 - **Grafana** – interface de visualisation des données.
 
----
-
 ## Pré-requis
 
 - Distribution Linux compatible avec `systemd` (Debian 10+, Ubuntu 18.04+).
 - Accès administrateur (sudo/root).
 - Connexion Internet.
 - Paquets essentiels installés : `wget` et `unzip`.
-
----
 
 ## Étape 1 – Installation et configuration de **Loki**
 
@@ -35,13 +31,16 @@ sudo chmod +x loki
 ```
 
 ### 1.2 Fichier de configuration
+
 Créez les dossiers et fichiers nécessaires :
 
 ```bash
 sudo mkdir -p /etc/loki /var/lib/loki /var/log/loki
 sudo nano /etc/loki/config.yaml
 ```
+
 Copiez cette configuration de base :
+
 ```yaml
 # Active ou désactive l'authentification pour accéder à Loki.
 auth_enabled: false
@@ -113,6 +112,7 @@ WantedBy=multi-user.target
 ```
 
 ### 1.4 Activation du service
+
 Activez et démarrez le service :
 
 ```bash
@@ -139,13 +139,17 @@ sudo mv alloy /usr/local/bin/alloy
 ```
 
 ### 2.2 Configuration d’Alloy
+
 Créez les répertoires et le fichier de configuration :
+
 ```bash
 sudo mkdir -p /etc/alloy /var/lib/alloy /var/log/alloy
 sudo nano /etc/alloy/config.alloy
 ```
+
 Configuration de base :
-```
+
+```config
 // Correspondance de fichiers locaux à surveiller
 local.file_match "local_files" {
     // Chemins des fichiers journaux à surveiller (ici tous les fichiers .log)
@@ -198,14 +202,14 @@ WantedBy=multi-user.target
 ```
 
 ### 2.4 Activation du service
+
 Activez et démarrez Alloy :
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now alloy.service
 sudo systemctl start alloy.service
 ```
-
----
 
 ## Étape 3 – Installation de **Grafana**
 
@@ -220,11 +224,12 @@ sudo mv grafana-v10.3.1 /usr/local/grafana
 ```
 
 ### 3.2 Service systemd pour Grafana
+
 ```bash
 sudo nano /etc/systemd/system/grafana.service
 ```
 
-```
+```config
 [Unit]
 Description=Grafana Dashboard
 After=network.target
@@ -243,7 +248,9 @@ WantedBy=multi-user.target
 ```
 
 ### 3.3 Activation du service Grafana
+
 Activez Grafana :
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now grafana.service
@@ -269,7 +276,6 @@ systemctl status grafana
 3. Ajoutez **Loki** comme source de données (URL : `http://localhost:3100`)
 4. Créez un tableau de bord avec LOKI comme source de données
 5. En utilisant le filtre à base de `label`, selectionner filename = /var/log/auth.log
----
 
 ## Conclusion
 
@@ -282,4 +288,3 @@ Les trois outils sont désormais installés, configurés, et gérés de manière
 - [Loki Documentation](https://grafana.com/docs/loki/latest/)
 - [Alloy Documentation](https://grafana.com/docs/alloy/latest/)
 - [Grafana Documentation](https://grafana.com/docs/grafana/latest/)
-

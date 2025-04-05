@@ -1,0 +1,23 @@
+// Correspondance de fichiers locaux à surveiller
+local.file_match "local_files" {
+    // Chemins des fichiers journaux à surveiller (ici tous les fichiers .log)
+    path_targets = [{"__path__" = "/var/log/*.log"}]
+    // Fréquence à laquelle les correspondances sont mises à jour
+    sync_period = "5s"
+}
+
+// Source Loki pour lire les journaux locaux
+loki.source.file "log_scrape" {
+  // Cibles définies à partir des correspondances de fichiers locaux
+  targets    = local.file_match.local_files.targets
+  // Destination des journaux collectés
+  forward_to = [loki.write.grafana_loki.receiver]
+}
+
+// Écriture des journaux collectés vers une instance Loki
+loki.write "grafana_loki" {
+  endpoint {
+    // URL de l'instance Loki vers laquelle envoyer les journaux
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+}
