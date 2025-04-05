@@ -1,0 +1,163 @@
+loki:
+  auth_enabled: false
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  ingester:
+    chunk_encoding: snappy
+  querier:
+    max_concurrent: 4
+  pattern_ingester:
+    enabled: true
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+  rulerConfig:
+    enable_api: true
+    enable_alertmanager_v2: true
+    external_url: "http://prometheus-alertmanager:9093"
+    alertmanager_url: "http://prometheus-alertmanager:9093"
+    rule_path: /tmp/loki/rules/
+    storage:
+      type: local
+      local:
+        directory: /etc/loki/rules
+
+deploymentMode: Distributed
+
+ingester:
+  replicas: 3  # To ensure data durability with replication
+  zoneAwareReplication:
+    enabled: false
+querier:
+  replicas: 3  # Improve query performance via parallelism
+  maxUnavailable: 2
+queryFrontend:
+  replicas: 2
+  maxUnavailable: 1
+queryScheduler:
+  replicas: 2
+distributor:
+  replicas: 3
+  maxUnavailable: 2
+compactor:
+  replicas: 1
+indexGateway:
+  replicas: 2
+  maxUnavailable: 1
+
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+
+# Zero out replica counts of other deployment modes
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+singleBinary:
+  replicas: 0
+
+# Expose the Loki gateway externally via a LoadBalancer.
+gateway:
+  service:
+    type: ClusterIP
+
+# Enable Minio for object storage.
+minio:
+  enabled: true
+
+# Ruler configuration for alerting.
+ruler:
+  replicas: 1
+  enabled: true
+  extraVolumes:
+    - name: fake
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: fake
+      mountPath: /tmp/loki/rules/
+  persistence:
+    enabled: true
+    size: 1Gi
+  directories:
+    fake:
+      rules.txt: |
+        groups:
+        - name: FlotteInterstellaireAlerts
+          rules:
+          - alert: ErrorLogDetected
+            expr: sum(count_over_time({pod_name=~"flotte-interstellaire.*"} |= "ERROR" [5m])) by (pod_name) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Erreur détectée dans les logs"
+              description: "Des erreurs ont été détectées dans les logs de l'application flotte-interstellaire durant la dernière minute."
+
+        - name: ProblemeMoteurDetecte
+          rules:
+          - alert: ProblemeMoteurDetecte
+            expr: count_over_time({pod_name=~"flotte-interstellaire.*"} |= `ERROR: problème moteur` [5m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Problème moteur détecté sur un vaisseau 🚀"
+              description: "Le message 'ERROR: problème moteur' est apparu dans les logs récemment."
+        
+        - name: ProblemeNavigation
+          rules:
+          - alert: ProblemeNavigation
+            expr: count_over_time({pod_name=~"flotte-interstellaire.*"} |= `ERROR: système navigation indisponible` [5m]) > 0
+            for: 1m
+            labels:
+              severity: high
+            annotations:
+              summary: "Problème navigation détecté 🌌"
+              description: "Le message 'ERROR: système navigation indisponible' est apparu dans les logs."
+
+        - name: ErreursMultiplesDetectees
+          rules:
+          - alert: ErreursMultiplesDetectees
+            expr: sum(count_over_time({pod_name=~"flotte-interstellaire.*"} |= "ERROR" [2m])) by (pod_name) > 3
+            for: 1m
+            labels:
+              severity: high
+            annotations:
+              summary: "Nombre élevé d'erreurs détectées 🚨"
+              description: "Plus de 3 erreurs détectées en 2 minutes."
+
+        - name: CarburantFaibleFrequent
+          rules:
+          - alert: CarburantFaibleFrequent
+            expr: count_over_time({pod_name=~"flotte-interstellaire.*"} |= `réserve carburant faible` [10m]) > 2
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Alertes fréquentes sur la réserve de carburant ⛽"
+              description: "Plusieurs alertes concernant la réserve de carburant faible détectées récemment."
+
+        - name: ProblemeNebulaX
+          rules:
+          - alert: ProblemeNebulaX
+            expr: count_over_time({pod_name=~"flotte-interstellaire.*"} |= "ERROR" |= `vaisseau=NebulaX` [10m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Erreur détectée sur le NebulaX 🚀"
+              description: "Le vaisseau NebulaX a rencontré au moins une erreur récemment."

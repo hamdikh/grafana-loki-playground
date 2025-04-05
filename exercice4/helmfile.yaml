@@ -1,0 +1,79 @@
+# helmfile.yaml
+
+repositories:
+  # MailHog Helm chart repository
+  - name: codecentric
+    url: https://codecentric.github.io/helm-charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: incubator
+    url: https://charts.helm.sh/incubator
+
+releases:
+
+  # Dedicated release for creating 'app' namespace (runs only once)
+  - name: flotte-interstellaire
+    namespace: app
+    createNamespace: true
+    chart: incubator/raw
+    hooks:
+    - events: ["presync", "preapply"]
+      command: "docker"
+      args: ["build", "-t", "flotte-interstellaire:latest", "."]
+    - events: ["presync", "preapply"]
+      command: "kind"
+      args: ["load", "docker-image", "-n", "local", "flotte-interstellaire:latest"]
+    - events: ["postsync"]
+      command: "kubectl"
+      args: ["apply", "-f", "minimal-python-app-deploy.yaml"]
+
+  # MailHog deployment in the 'monitoring' namespace
+  - name: mailhog
+    namespace: monitoring
+    createNamespace: true
+    chart: codecentric/mailhog
+    needs:
+      - app/flotte-interstellaire
+
+  # Prometheus deployment in the 'monitoring' namespace
+  - name: prometheus
+    namespace: monitoring
+    createNamespace: true
+    chart: prometheus-community/prometheus
+    values:
+      - prometheus-values.yaml
+    needs:
+      - mailhog
+
+  # Grafana deployment in the 'monitoring' namespace
+  - name: grafana
+    namespace: monitoring
+    createNamespace: true
+    chart: grafana/grafana
+    set:
+      - name: adminPassword
+        value: "admin"
+    needs:
+      - prometheus
+
+  # Loki deployment in the 'monitoring' namespace
+  - name: loki
+    namespace: monitoring
+    createNamespace: true
+    chart: grafana/loki
+    values:
+      - loki-values.yaml
+    needs:
+      - grafana
+
+  # Alloy custom deployment in the 'custom' namespace
+  - name: alloy
+    namespace: monitoring
+    createNamespace: true
+    chart: grafana/alloy
+    values:
+      - alloy-values.yaml
+    needs:
+      - loki

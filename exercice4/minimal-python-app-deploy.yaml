@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flotte-interstellaire
+  namespace: app  # Assurez-vous que le namespace "monitoring" existe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flotte-interstellaire
+  template:
+    metadata:
+      labels:
+        app: flotte-interstellaire
+    spec:
+      containers:
+      - name: flotte-interstellaire
+        image: flotte-interstellaire:latest
+        imagePullPolicy: IfNotPresent
+        # Optionnel : expose un port si nécessaire
+        ports:
+        - containerPort: 8080
